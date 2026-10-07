@@ -5,32 +5,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Lagos Zombie Survival 3D</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Three.js 3D Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- On-Screen Error Catching -->
+    <script>
+        window.onerror = function(msg, url, line) {
+            alert("Game Error: " + msg + " (Line " + line + ")");
+        };
+    </script>
+    <!-- Three.js Reliable CDN -->
+    <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
 </head>
 <body>
-    <!-- Character Selection Overlay -->
+    <!-- Character Selection Screen -->
     <div id="char-select-screen" class="overlay-screen">
         <div class="card-modal">
             <h2>SURVIVOR REGISTRATION</h2>
             <p>Choose your gender to enter Lagos Safehouse</p>
 
             <div class="gender-selection">
-                <button id="btn-male" class="gender-btn active">
+                <button id="btn-male" class="gender-btn active" type="button">
                     <span class="gender-icon">👨</span>
                     <span>Male</span>
                 </button>
-                <button id="btn-female" class="gender-btn">
+                <button id="btn-female" class="gender-btn" type="button">
                     <span class="gender-icon">👩</span>
                     <span>Female</span>
                 </button>
             </div>
 
-            <button id="btn-start-game" class="primary-btn">ENTER GAME WORLD</button>
+            <button id="btn-start-game" class="primary-btn" type="button">ENTER GAME WORLD</button>
         </div>
     </div>
 
-    <!-- 3D Game Viewport -->
+    <!-- 3D Viewport -->
     <div id="game-viewport"></div>
 
     <script src="game.js"></script>
