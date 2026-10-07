@@ -1,406 +1,288 @@
-// Lagos Zombie Survival 3D Engine
 document.addEventListener("DOMContentLoaded", () => {
-    let selectedGender = "male";
+  let gender = "male";
+  const selScreen = document.getElementById("char-select-screen");
+  const btnM = document.getElementById("btn-male");
+  const btnF = document.getElementById("btn-female");
+  const btnStart = document.getElementById("btn-start-game");
 
-    const btnMale = document.getElementById("btn-male");
-    const btnFemale = document.getElementById("btn-female");
-    const btnStart = document.getElementById("btn-start-game");
-    const selectScreen = document.getElementById("char-select-screen");
+  if (btnM && btnF && btnStart) {
+    btnM.onclick = (e) => { e.preventDefault(); gender = "male"; btnM.classList.add("active"); btnF.classList.remove("active"); };
+    btnF.onclick = (e) => { e.preventDefault(); gender = "female"; btnF.classList.add("active"); btnM.classList.remove("active"); };
+    btnStart.onclick = (e) => { e.preventDefault(); if (selScreen) selScreen.style.display = "none"; init3D(); };
+  }
 
-    if (btnMale && btnFemale && btnStart) {
-        btnMale.addEventListener("click", (e) => {
-            e.preventDefault();
-            selectedGender = "male";
-            btnMale.classList.add("active");
-            btnFemale.classList.remove("active");
-        });
-
-        btnFemale.addEventListener("click", (e) => {
-            e.preventDefault();
-            selectedGender = "female";
-            btnFemale.classList.add("active");
-            btnMale.classList.remove("active");
-        });
-
-        btnStart.addEventListener("click", (e) => {
-            e.preventDefault();
-            if (selectScreen) selectScreen.style.display = "none";
-            init3DWorld();
-        });
+  function init3D() {
+    if (typeof THREE === "undefined") {
+      alert("Three.js library not loaded yet. Please refresh.");
+      return;
     }
 
-    function init3DWorld() {
-        if (typeof THREE === "undefined") {
-            alert("3D Library loading... Please check internet connection and refresh.");
-            return;
-        }
+    const state = { cash: 10000, hp: 100, ammo: 60, wepIdx: 0, sprint: false };
+    const weapons = [
+      { name: "Pistol", icon: "🔫", label: "FIRE", type: "ranged", damage: 35 },
+      { name: "Cutlass", icon: "🗡️", label: "SWING", type: "melee", damage: 60 }
+    ];
 
-        const viewport = document.getElementById("game-viewport");
-        if (!viewport) return;
+    // 1. HUD & Mobile Controls HTML
+    document.body.insertAdjacentHTML("beforeend", `
+      <div style="position:fixed;top:12px;left:50%;transform:translateX(-50%);width:92%;max-width:440px;z-index:10;pointer-events:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.95);padding:8px 16px;border-radius:30px;box-shadow:0 4px 15px rgba(0,0,0,0.18);pointer-events:auto;">
+          <div style="font-weight:700;font-size:13px;color:#333;">☀️ 10:08 AM | 🔊</div>
+          <div style="background:#27ae60;color:#fff;padding:6px 14px;border-radius:20px;font-weight:800;font-size:14px;">
+            ₦<span id="hud-cash">${state.cash.toLocaleString()}</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:center;margin-top:6px;">
+          <span style="background:rgba(255,255,255,0.88);padding:4px 12px;border-radius:14px;font-size:11px;font-weight:600;color:#555;">👀 18.9m visits</span>
+          <span style="background:rgba(255,255,255,0.88);padding:4px 12px;border-radius:14px;font-size:11px;font-weight:700;color:#27ae60;">● 85k online</span>
+        </div>
+      </div>
 
-        // Game State - Starter Balance ₦10,000
-        const gameState = {
-            cash: 10000,
-            hp: 100,
-            ammo: 60,
-            weaponIndex: 0,
-            isSprinting: false,
-            weapons: [
-                { name: "Pistol", icon: "🔫", actionText: "FIRE", type: "ranged", damage: 35 },
-                { name: "Cutlass", icon: "🗡️", actionText: "SWING", type: "melee", damage: 60 }
-            ]
-        };
-
-        // 1. UI Overlay Injection
-        const hudHTML = `
-            <div style="position: fixed; top: 12px; left: 50%; transform: translateX(-50%); width: 92%; max-width: 440px; display: flex; flex-direction: column; gap: 6px; z-index: 10; pointer-events: none;">
-                <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.95); backdrop-filter: blur(8px); padding: 8px 16px; border-radius: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.18); pointer-events: auto;">
-                    <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13px; color: #333;">
-                        <span>☀️ 10:08 AM</span>
-                        <span style="color: #ccc;">|</span>
-                        <span>🔊</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 6px; background: #27ae60; color: white; padding: 6px 14px; border-radius: 20px; font-weight: 800; font-size: 14px;">
-                        <span>₦</span><span id="hud-cash">${gameState.cash.toLocaleString()}</span>
-                        <span style="background: rgba(255,255,255,0.3); width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-left: 2px; font-size: 12px;">+</span>
-                    </div>
-                </div>
-
-                <div style="display: flex; gap: 8px; justify-content: center;">
-                    <span style="background: rgba(255,255,255,0.88); padding: 4px 12px; border-radius: 14px; font-size: 11px; font-weight: 600; color: #555;">👀 18.9m visits</span>
-                    <span style="background: rgba(255,255,255,0.88); padding: 4px 12px; border-radius: 14px; font-size: 11px; font-weight: 700; color: #27ae60;">● 85k online</span>
-                </div>
+      <div style="position:fixed;bottom:16px;left:50%;transform:translateX(-50%);width:92%;max-width:440px;z-index:10;pointer-events:auto;">
+        <div style="background:#fff;padding:12px 16px;border-radius:20px;box-shadow:0 8px 24px rgba(0,0,0,0.2);">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:20px;">${gender === "male" ? "👨" : "👩"}</span>
+              <div>
+                <h4 style="font-size:13px;font-weight:800;margin:0;">Eko Hotels & Suites</h4>
+                <p style="font-size:11px;color:#777;margin:0;">Pool Lounge Safehouse</p>
+              </div>
             </div>
+            <span style="font-size:11px;background:#f0f0f0;padding:4px 10px;border-radius:10px;font-weight:600;">HP: <strong id="hud-hp" style="color:#27ae60;">100</strong></span>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <input type="text" placeholder="Say something to players here..." style="flex:1;padding:8px 12px;border-radius:12px;border:1px solid #ddd;font-size:12px;outline:none;">
+            <button style="width:36px;height:36px;background:#27ae60;color:#fff;border:none;border-radius:50%;font-size:14px;">✈️</button>
+          </div>
+        </div>
+      </div>
 
-            <div style="position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); width: 92%; max-width: 440px; z-index: 10; display: flex; flex-direction: column; gap: 10px; pointer-events: auto;">
-                <div style="background: #ffffff; padding: 12px 16px; border-radius: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.2);">
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <div style="width: 36px; height: 36px; background: #eafaf1; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px;">
-                                ${selectedGender === "male" ? "👨" : "👩"}
-                            </div>
-                            <div>
-                                <h4 style="font-size: 13px; font-weight: 800; color: #111;">Eko Hotels & Suites</h4>
-                                <p style="font-size: 11px; color: #777;">The Lounge • Pool Sanctuary</p>
-                            </div>
-                        </div>
-                        <span style="font-size: 11px; background: #f0f0f0; padding: 4px 10px; border-radius: 10px; font-weight: 600;">HP: <strong id="hud-hp" style="color:#27ae60;">100</strong></span>
-                    </div>
+      <div id="joy-zone" style="position:fixed;bottom:125px;left:20px;width:90px;height:90px;background:rgba(255,255,255,0.25);border:2px solid rgba(255,255,255,0.6);border-radius:50%;z-index:10;touch-action:none;">
+        <div id="joy-stick" style="width:36px;height:36px;background:#27ae60;border-radius:50%;position:absolute;top:25px;left:25px;pointer-events:none;"></div>
+      </div>
 
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <input id="chat-input" type="text" placeholder="Say something to players here..." style="flex: 1; padding: 10px 14px; border-radius: 14px; border: 1px solid #eaeaea; background: #f8f9fa; font-size: 12px; outline: none;">
-                        <button id="btn-send-chat" style="width: 38px; height: 38px; background: #27ae60; color: white; border: none; border-radius: 50%; font-size: 14px; cursor: pointer;">✈️</button>
-                    </div>
-                </div>
-            </div>
+      <div style="position:fixed;bottom:125px;right:20px;display:flex;gap:10px;align-items:center;z-index:10;">
+        <button id="btn-sprint" style="width:46px;height:46px;background:#34495e;color:#fff;border:2px solid #7f8c8d;border-radius:50%;font-size:18px;">🏃</button>
+        <button id="btn-swap" style="padding:10px 12px;background:#2c3e50;color:#fff;border:1px solid #7f8c8d;border-radius:12px;font-weight:bold;font-size:11px;">SWAP</button>
+        <button id="btn-atk" style="width:68px;height:68px;background:#e74c3c;color:#fff;border:3px solid #c0392b;border-radius:50%;font-weight:bold;font-size:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+          <span id="btn-icon">🔫</span>
+          <span id="btn-label" style="font-size:8px;">FIRE</span>
+        </button>
+      </div>
+    `);
 
-            <div id="joystick-zone" style="position: fixed; bottom: 125px; left: 20px; width: 95px; height: 95px; background: rgba(255,255,255,0.25); backdrop-filter: blur(4px); border: 2px solid rgba(255,255,255,0.6); border-radius: 50%; z-index: 10; touch-action: none;">
-                <div id="stick" style="width: 38px; height: 38px; background: #27ae60; border-radius: 50%; position: absolute; top: 27px; left: 27px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); pointer-events: none;"></div>
-            </div>
+    // 2. Three.js Scene Setup
+    const viewport = document.getElementById("game-viewport");
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x6b8e4e);
 
-            <div style="position: fixed; bottom: 125px; right: 20px; display: flex; gap: 10px; align-items: center; z-index: 10; pointer-events: auto;">
-                <button id="btn-sprint" style="width: 48px; height: 48px; background: #34495e; color: white; border: 2px solid #7f8c8d; border-radius: 50%; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;">🏃</button>
-                <button id="btn-switch" style="padding: 10px 12px; background: #2c3e50; color: white; border: 1px solid #7f8c8d; border-radius: 12px; font-weight: bold; font-size: 11px; cursor: pointer;">SWAP</button>
-                <button id="btn-attack" style="width: 68px; height: 68px; background: #e74c3c; color: white; border: 3px solid #c0392b; border-radius: 50%; font-weight: bold; font-size: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 0 14px rgba(231,76,60,0.6); cursor: pointer;">
-                    <span id="btn-icon">🔫</span>
-                    <span id="btn-label" style="font-size: 8px; margin-top: 1px;">FIRE</span>
-                </button>
-            </div>
-        `;
-        document.body.insertAdjacentHTML("beforeend", hudHTML);
+    const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(16, 18, 16);
+    camera.lookAt(0, 0, 0);
 
-        // 2. Three.js Scene Setup
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x6b8e4e);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    viewport.appendChild(renderer.domElement);
 
-        const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(16, 18, 16);
-        camera.lookAt(0, 0, 0);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+    const sun = new THREE.DirectionalLight(0xffffff, 0.65);
+    sun.position.set(15, 30, 15);
+    scene.add(sun);
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        viewport.appendChild(renderer.domElement);
+    // Environment
+    const grass = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshLambertMaterial({ color: 0x6b8e4e }));
+    grass.rotation.x = -Math.PI / 2;
+    scene.add(grass);
 
-        // Lights
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
-        scene.add(ambientLight);
+    const road = new THREE.Mesh(new THREE.PlaneGeometry(100, 10), new THREE.MeshLambertMaterial({ color: 0x333333 }));
+    road.rotation.x = -Math.PI / 2;
+    road.position.set(0, 0.01, -22);
+    scene.add(road);
 
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.65);
-        dirLight.position.set(15, 30, 15);
-        scene.add(dirLight);
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(22, 0.3, 18), new THREE.MeshLambertMaterial({ color: 0xded5c5 }));
+    floor.position.set(0, 0.15, 0);
+    scene.add(floor);
 
-        // 3. Ground & Eko Lounge Environment
-        const grassGeo = new THREE.PlaneGeometry(100, 100);
-        const grassMat = new THREE.MeshLambertMaterial({ color: 0x6b8e4e });
-        const grass = new THREE.Mesh(grassGeo, grassMat);
-        grass.rotation.x = -Math.PI / 2;
-        scene.add(grass);
+    const pool = new THREE.Mesh(new THREE.BoxGeometry(7, 0.2, 4.5), new THREE.MeshLambertMaterial({ color: 0x2980b9 }));
+    pool.position.set(5, 0.26, -3);
+    scene.add(pool);
 
-        const roadGeo = new THREE.PlaneGeometry(100, 10);
-        const roadMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
-        const road = new THREE.Mesh(roadGeo, roadMat);
-        road.rotation.x = -Math.PI / 2;
-        road.position.set(0, 0.01, -22);
-        scene.add(road);
+    // Avatar Builder
+    function makeHuman(g, color) {
+      const grp = new THREE.Group();
+      const skin = new THREE.MeshLambertMaterial({ color: 0x8d5524 });
 
-        const floorGeo = new THREE.BoxGeometry(22, 0.3, 18);
-        const floorMat = new THREE.MeshLambertMaterial({ color: 0xded5c5 });
-        const floor = new THREE.Mesh(floorGeo, floorMat);
-        floor.position.set(0, 0.15, 0);
-        scene.add(floor);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 12), skin);
+      head.position.y = 1.6;
+      grp.add(head);
 
-        const poolGeo = new THREE.BoxGeometry(7, 0.2, 4.5);
-        const poolMat = new THREE.MeshLambertMaterial({ color: 0x2980b9 });
-        const pool = new THREE.Mesh(poolGeo, poolMat);
-        pool.position.set(5, 0.26, -3);
-        scene.add(pool);
+      const hair = new THREE.Mesh(new THREE.BoxGeometry(0.6, g === "female" ? 0.4 : 0.2, 0.6), new THREE.MeshLambertMaterial({ color: 0x111111 }));
+      hair.position.y = g === "female" ? 1.75 : 1.85;
+      grp.add(hair);
 
-        const waterGeo = new THREE.PlaneGeometry(6.6, 4.1);
-        const waterMat = new THREE.MeshBasicMaterial({ color: 0x3498db, transparent: true, opacity: 0.8 });
-        const water = new THREE.Mesh(waterGeo, waterMat);
-        water.rotation.x = -Math.PI / 2;
-        water.position.set(5, 0.38, -3);
-        scene.add(water);
+      const torso = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 0.35), new THREE.MeshLambertMaterial({ color: color }));
+      torso.position.y = 1.0;
+      grp.add(torso);
 
-        // 4. Human-like Animated 3D Avatar Creation
-        function createAnimatedHuman(gender, outfitColor) {
-            const avatarGroup = new THREE.Group();
-            const skinMat = new THREE.MeshLambertMaterial({ color: 0x8d5524 });
+      const armG = new THREE.BoxGeometry(0.18, 0.65, 0.18);
+      armG.translate(0, -0.25, 0);
+      const armL = new THREE.Mesh(armG, skin); armL.position.set(-0.38, 1.3, 0); grp.add(armL);
+      const armR = new THREE.Mesh(armG, skin); armR.position.set(0.38, 1.3, 0); grp.add(armR);
 
-            const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 12), skinMat);
-            head.position.y = 1.6;
-            avatarGroup.add(head);
+      const legG = new THREE.BoxGeometry(0.2, 0.7, 0.2);
+      legG.translate(0, -0.3, 0);
+      const legM = new THREE.MeshLambertMaterial({ color: 0x2c3e50 });
+      const legL = new THREE.Mesh(legG, legM); legL.position.set(-0.16, 0.65, 0); grp.add(legL);
+      const legR = new THREE.Mesh(legG, legM); legR.position.set(0.16, 0.65, 0); grp.add(legR);
 
-            const hairGeo = gender === "female" ? new THREE.BoxGeometry(0.7, 0.4, 0.7) : new THREE.BoxGeometry(0.6, 0.2, 0.6);
-            const hairMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
-            const hair = new THREE.Mesh(hairGeo, hairMat);
-            hair.position.y = gender === "female" ? 1.75 : 1.85;
-            avatarGroup.add(hair);
+      grp.userData = { armL, armR, legL, legR, cycle: 0 };
+      return grp;
+    }
 
-            const torsoMat = new THREE.MeshLambertMaterial({ color: outfitColor });
-            const torso = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 0.35), torsoMat);
-            torso.position.y = 1.0;
-            avatarGroup.add(torso);
+    const player = makeHuman(gender, gender === "male" ? 0xe67e22 : 0x9b59b6);
+    player.position.set(0, 0.3, 0);
+    scene.add(player);
 
-            const armGeo = new THREE.BoxGeometry(0.18, 0.65, 0.18);
-            armGeo.translate(0, -0.25, 0);
-            const armL = new THREE.Mesh(armGeo, skinMat);
-            armL.position.set(-0.38, 1.3, 0);
-            avatarGroup.add(armL);
+    const zombies = [];
+    for (let i = 0; i < 5; i++) {
+      const z = makeHuman("male", 0x27ae60);
+      z.position.set((Math.random() - 0.5) * 40, 0.3, -16 - Math.random() * 12);
+      scene.add(z);
+      zombies.push({ mesh: z, hp: 100 });
+    }
 
-            const armR = new THREE.Mesh(armGeo, skinMat);
-            armR.position.set(0.38, 1.3, 0);
-            avatarGroup.add(armR);
+    // Laser Sight
+    const laserMat = new THREE.LineDashedMaterial({ color: 0xe74c3c, dashSize: 0.4, gapSize: 0.2 });
+    const laser = new THREE.Line(new THREE.BufferGeometry(), laserMat);
+    scene.add(laser);
 
-            const legGeo = new THREE.BoxGeometry(0.2, 0.7, 0.2);
-            legGeo.translate(0, -0.3, 0);
-            const legMat = new THREE.MeshLambertMaterial({ color: 0x2c3e50 });
-            const legL = new THREE.Mesh(legGeo, legMat);
-            legL.position.set(-0.16, 0.65, 0);
-            avatarGroup.add(legL);
+    const bullets = [];
 
-            const legR = new THREE.Mesh(legGeo, legMat);
-            legR.position.set(0.16, 0.65, 0);
-            avatarGroup.add(legR);
+    // Controls
+    const joyZone = document.getElementById("joy-zone");
+    const stick = document.getElementById("joy-stick");
+    let joyActive = false;
+    let vec = { x: 0, y: 0 };
 
-            avatarGroup.userData = { armL, armR, legL, legR, animCycle: 0 };
-            return avatarGroup;
-        }
+    function handleTouch(e) {
+      if (!joyActive) return;
+      const rect = joyZone.getBoundingClientRect();
+      const touch = e.touches[0];
+      let dx = touch.clientX - (rect.left + rect.width / 2);
+      let dy = touch.clientY - (rect.top + rect.height / 2);
+      const dist = Math.hypot(dx, dy);
+      if (dist > 30) { dx = (dx / dist) * 30; dy = (dy / dist) * 30; }
+      stick.style.transform = `translate(${dx}px, ${dy}px)`;
+      vec = { x: dx / 30, y: dy / 30 };
+    }
 
-        const mainPlayerColor = selectedGender === "male" ? 0xe67e22 : 0x9b59b6;
-        const player3D = createAnimatedHuman(selectedGender, mainPlayerColor);
-        player3D.position.set(0, 0.3, 0);
-        scene.add(player3D);
+    joyZone.ontouchstart = (e) => { joyActive = true; handleTouch(e); };
+    joyZone.ontouchmove = handleTouch;
+    joyZone.ontouchend = () => { joyActive = false; stick.style.transform = "translate(0,0)"; vec = { x: 0, y: 0 }; };
 
-        const zombies3D = [];
-        for (let i = 0; i < 6; i++) {
-            const z = createAnimatedHuman("male", 0x27ae60);
-            z.position.set((Math.random() - 0.5) * 40, 0.3, -16 - Math.random() * 15);
-            scene.add(z);
-            zombies3D.push({ mesh: z, hp: 100 });
-        }
+    document.getElementById("btn-sprint").onclick = () => {
+      state.sprint = !state.sprint;
+      document.getElementById("btn-sprint").style.background = state.sprint ? "#27ae60" : "#34495e";
+    };
 
-        const laserMat = new THREE.LineDashedMaterial({ color: 0xe74c3c, dashSize: 0.4, gapSize: 0.2 });
-        const laserGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -1)]);
-        const laserLine = new THREE.Line(laserGeo, laserMat);
-        laserLine.visible = true;
-        scene.add(laserLine);
+    document.getElementById("btn-swap").onclick = () => {
+      state.wepIdx = (state.wepIdx + 1) % weapons.length;
+      const w = weapons[state.wepIdx];
+      document.getElementById("btn-icon").innerText = w.icon;
+      document.getElementById("btn-label").innerText = w.label;
+      laser.visible = w.type === "ranged";
+    };
 
-        const bullets3D = [];
-
-        // 5. Controls Logic
-        const joyZone = document.getElementById("joystick-zone");
-        const stick = document.getElementById("stick");
-        let joyActive = false;
-        let joyVector = { x: 0, y: 0 };
-
-        function handleTouch(e) {
-            if (!joyActive) return;
-            const rect = joyZone.getBoundingClientRect();
-            const touch = e.touches[0];
-            const centerX = rect.left + rect.width / 2;
-            const centerY = rect.top + rect.height / 2;
-            let dx = touch.clientX - centerX;
-            let dy = touch.clientY - centerY;
-            const dist = Math.hypot(dx, dy);
-            const maxDist = 32;
-
-            if (dist > maxDist) {
-                dx = (dx / dist) * maxDist;
-                dy = (dy / dist) * maxDist;
-            }
-
-            stick.style.transform = `translate(${dx}px, ${dy}px)`;
-            joyVector = { x: dx / maxDist, y: dy / maxDist };
-        }
-
-        if (joyZone) {
-            joyZone.addEventListener("touchstart", (e) => { joyActive = true; handleTouch(e); });
-            joyZone.addEventListener("touchmove", handleTouch);
-            joyZone.addEventListener("touchend", () => {
-                joyActive = false;
-                if (stick) stick.style.transform = "translate(0px, 0px)";
-                joyVector = { x: 0, y: 0 };
-            });
-        }
-
-        const btnSprint = document.getElementById("btn-sprint");
-        if (btnSprint) {
-            btnSprint.addEventListener("click", () => {
-                gameState.isSprinting = !gameState.isSprinting;
-                btnSprint.style.background = gameState.isSprinting ? "#27ae60" : "#34495e";
-            });
-        }
-
-        const btnSwitch = document.getElementById("btn-switch");
-        if (btnSwitch) {
-            btnSwitch.addEventListener("click", () => {
-                gameState.weaponIndex = (gameState.weaponIndex + 1) % gameState.weapons.length;
-                const curWep = gameState.weapons[gameState.weaponIndex];
-                const btnIcon = document.getElementById("btn-icon");
-                const btnLabel = document.getElementById("btn-label");
-                if (btnIcon) btnIcon.innerText = curWep.icon;
-                if (btnLabel) btnLabel.innerText = curWep.actionText;
-                laserLine.visible = curWep.type === "ranged";
-            });
-        }
-
-        const btnAttack = document.getElementById("btn-attack");
-        if (btnAttack) {
-            btnAttack.addEventListener("click", performAttack);
-        }
-
-        function performAttack() {
-            const curWep = gameState.weapons[gameState.weaponIndex];
-            if (curWep.type === "ranged") {
-                if (gameState.ammo <= 0) return;
-                gameState.ammo--;
-
-                const bulletGeo = new THREE.SphereGeometry(0.15, 8, 8);
-                const bulletMat = new THREE.MeshBasicMaterial({ color: 0xf1c40f });
-                const bullet = new THREE.Mesh(bulletGeo, bulletMat);
-                bullet.position.set(player3D.position.x, 1.2, player3D.position.z);
-
-                const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), player3D.rotation.y);
-                bullets3D.push({ mesh: bullet, dir: forward, dist: 0 });
-                scene.add(bullet);
-            } else {
-                zombies3D.forEach((zObj) => {
-                    const d = player3D.position.distanceTo(zObj.mesh.position);
-                    if (d < 3.2) {
-                        zObj.hp -= curWep.damage;
-                    }
-                });
-            }
-        }
-
-        function animateHumanLimbs(avatar, isMoving, speedMult) {
-            const { armL, armR, legL, legR } = avatar.userData;
-            if (!armL || !armR || !legL || !legR) return;
-
-            if (isMoving) {
-                avatar.userData.animCycle += 0.22 * speedMult;
-                const cycle = avatar.userData.animCycle;
-
-                legL.rotation.x = Math.sin(cycle) * 0.7;
-                legR.rotation.x = -Math.sin(cycle) * 0.7;
-                armL.rotation.x = -Math.sin(cycle) * 0.7;
-                armR.rotation.x = Math.sin(cycle) * 0.7;
-            } else {
-                legL.rotation.x = 0;
-                legR.rotation.x = 0;
-                armL.rotation.x = 0;
-                armR.rotation.x = 0;
-            }
-        }
-
-        window.addEventListener("resize", () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+    document.getElementById("btn-atk").onclick = () => {
+      const w = weapons[state.wepIdx];
+      if (w.type === "ranged") {
+        const b = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), new THREE.MeshBasicMaterial({ color: 0xf1c40f }));
+        b.position.set(player.position.x, 1.2, player.position.z);
+        const dir = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), player.rotation.y);
+        bullets.push({ mesh: b, dir, dist: 0 });
+        scene.add(b);
+      } else {
+        zombies.forEach((z) => {
+          if (player.position.distanceTo(z.mesh.position) < 3.2) z.hp -= w.damage;
         });
+      }
+    };
 
-        // 6. Main Render Loop
-        function animate() {
-            requestAnimationFrame(animate);
+    function animLimbs(avatar, moving, spd) {
+      const { armL, armR, legL, legR } = avatar.userData;
+      if (!armL) return;
+      if (moving) {
+        avatar.userData.cycle += 0.22 * spd;
+        const c = avatar.userData.cycle;
+        legL.rotation.x = Math.sin(c) * 0.7; legR.rotation.x = -Math.sin(c) * 0.7;
+        armL.rotation.x = -Math.sin(c) * 0.7; armR.rotation.x = Math.sin(c) * 0.7;
+      } else {
+        legL.rotation.x = 0; legR.rotation.x = 0; armL.rotation.x = 0; armR.rotation.x = 0;
+      }
+    }
 
-            const isMoving = joyVector.x !== 0 || joyVector.y !== 0;
-            const moveSpeed = gameState.isSprinting ? 0.22 : 0.12;
+    window.onresize = () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    };
 
-            if (isMoving) {
-                const isoX = (joyVector.x - joyVector.y) * moveSpeed;
-                const isoZ = (joyVector.x + joyVector.y) * moveSpeed;
+    function animate() {
+      requestAnimationFrame(animate);
+      const isMoving = vec.x !== 0 || vec.y !== 0;
+      const spd = state.sprint ? 0.22 : 0.12;
 
-                player3D.position.x += isoX;
-                player3D.position.z += isoZ;
+      if (isMoving) {
+        const isoX = (vec.x - vec.y) * spd;
+        const isoZ = (vec.x + vec.y) * spd;
+        player.position.x += isoX;
+        player.position.z += isoZ;
+        player.rotation.y = Math.atan2(isoX, isoZ);
 
-                const angle = Math.atan2(isoX, isoZ);
-                player3D.rotation.y = angle;
+        camera.position.x = player.position.x + 16;
+        camera.position.z = player.position.z + 16;
+        camera.lookAt(player.position.x, player.position.y, player.position.z);
+      }
 
-                camera.position.x = player3D.position.x + 16;
-                camera.position.z = player3D.position.z + 16;
-                camera.lookAt(player3D.position.x, player3D.position.y, player3D.position.z);
-            }
+      animLimbs(player, isMoving, state.sprint ? 1.8 : 1.0);
 
-            animateHumanLimbs(player3D, isMoving, gameState.isSprinting ? 1.8 : 1.0);
+      if (laser.visible) {
+        const dir = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), player.rotation.y);
+        const start = new THREE.Vector3(player.position.x, 1.2, player.position.z);
+        const end = start.clone().add(dir.multiplyScalar(15));
+        laser.geometry.setFromPoints([start, end]);
+        laser.computeLineDistances();
+      }
 
-            if (laserLine.visible) {
-                const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), player3D.rotation.y);
-                const startPt = new THREE.Vector3(player3D.position.x, 1.2, player3D.position.z);
-                const endPt = startPt.clone().add(forward.multiplyScalar(15));
+      bullets.forEach((b, idx) => {
+        b.mesh.position.addScaledVector(b.dir, 0.8);
+        b.dist += 0.8;
+        zombies.forEach((z) => {
+          if (b.mesh.position.distanceTo(z.mesh.position) < 1.2) {
+            z.hp -= 35; scene.remove(b.mesh); bullets.splice(idx, 1);
+          }
+        });
+        if (b.dist > 25) { scene.remove(b.mesh); bullets.splice(idx, 1); }
+      });
 
-                laserLine.geometry.setFromPoints([startPt, endPt]);
-                laserLine.geometry.computeBoundingSphere();
-                laserLine.computeLineDistances();
-            }
+      zombies.forEach((z) => {
+        if (z.hp <= 0) {
+          state.cash += 500;
+          const cashEl = document.getElementById("hud-cash");
+          if (cashEl) cashEl.innerText = state.cash.toLocaleString();
+          z.mesh.position.set((Math.random() - 0.5) * 40, 0.3, -20 - Math.random() * 10);
+          z.hp = 100;
+        } else {
+          z.mesh.position.z += 0.02;
+          animLimbs(z.mesh, true, 0.6);
+          if (z.mesh.position.z > -2) z.mesh.position.z = -25;
+        }
+      });
 
-            bullets3D.forEach((b, idx) => {
-                b.mesh.position.addScaledVector(b.dir, 0.8);
-                b.dist += 0.8;
+      renderer.render(scene, camera);
+    }
 
-                zombies3D.forEach((zObj) => {
-                    if (b.mesh.position.distanceTo(zObj.mesh.position) < 1.2) {
-                        zObj.hp -= 35;
-                        scene.remove(b.mesh);
-                        bullets3D.splice(idx, 1);
-                    }
-                });
-
-                if (b.dist > 25) {
-                    scene.remove(b.mesh);
-                    bullets3D.splice(idx, 1);
-                }
-            });
-
-            zombies3D.forEach((zObj) => {
-                if (zObj.hp <= 0) {
-                    gameState.cash += 500;
-                    const cashElem = document.getElementById("hud-cash");
-                    if (cashElem) cashElem.innerText = gameState.cash.toLocaleString();
-                    zObj.mesh.position.set((Math.random() - 0.5) * 40, 0.3, -20 - Math.random() * 10);
-                    zObj.hp = 100;
-                } else {
-                    zObj.mesh.position.z += 0.02;
-                    animateHumanLimbs(zObj.mesh, true, 0.6);
-                    if (zObj.mesh.position.z > -2) zObj.mesh.position.z 
+    animate();
+  }
+});
