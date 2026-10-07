@@ -17,13 +17,14 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    const socket = typeof io !== "undefined" ? io() : null;
     const state = { cash: 10000, hp: 100, ammo: 60, wepIdx: 0, sprint: false };
     const weapons = [
       { name: "Pistol", icon: "🔫", label: "FIRE", type: "ranged", damage: 35 },
       { name: "Cutlass", icon: "🗡️", label: "SWING", type: "melee", damage: 60 }
     ];
 
-    // 1. HUD & Mobile Controls HTML
+    // HUD & UI
     document.body.insertAdjacentHTML("beforeend", `
       <div style="position:fixed;top:12px;left:50%;transform:translateX(-50%);width:92%;max-width:440px;z-index:10;pointer-events:none;">
         <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.95);padding:8px 16px;border-radius:30px;box-shadow:0 4px 15px rgba(0,0,0,0.18);pointer-events:auto;">
@@ -34,7 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
         <div style="display:flex;gap:8px;justify-content:center;margin-top:6px;">
           <span style="background:rgba(255,255,255,0.88);padding:4px 12px;border-radius:14px;font-size:11px;font-weight:600;color:#555;">👀 18.9m visits</span>
-          <span style="background:rgba(255,255,255,0.88);padding:4px 12px;border-radius:14px;font-size:11px;font-weight:700;color:#27ae60;">● 85k online</span>
+          <span style="background:rgba(255,255,255,0.88);padding:4px 12px;border-radius:14px;font-size:11px;font-weight:700;color:#27ae60;">● <span id="online-count">1</span> online</span>
         </div>
       </div>
 
@@ -45,14 +46,14 @@ document.addEventListener("DOMContentLoaded", () => {
               <span style="font-size:20px;">${gender === "male" ? "👨" : "👩"}</span>
               <div>
                 <h4 style="font-size:13px;font-weight:800;margin:0;">Eko Hotels & Suites</h4>
-                <p style="font-size:11px;color:#777;margin:0;">Pool Lounge Safehouse</p>
+                <p id="chat-status" style="font-size:11px;color:#777;margin:0;">Pool Lounge Safehouse</p>
               </div>
             </div>
             <span style="font-size:11px;background:#f0f0f0;padding:4px 10px;border-radius:10px;font-weight:600;">HP: <strong id="hud-hp" style="color:#27ae60;">100</strong></span>
           </div>
           <div style="display:flex;gap:8px;">
-            <input type="text" placeholder="Say something to players here..." style="flex:1;padding:8px 12px;border-radius:12px;border:1px solid #ddd;font-size:12px;outline:none;">
-            <button style="width:36px;height:36px;background:#27ae60;color:#fff;border:none;border-radius:50%;font-size:14px;">✈️</button>
+            <input id="chat-in" type="text" placeholder="Say something to players here..." style="flex:1;padding:8px 12px;border-radius:12px;border:1px solid #ddd;font-size:12px;outline:none;">
+            <button id="btn-send" style="width:36px;height:36px;background:#27ae60;color:#fff;border:none;border-radius:50%;font-size:14px;">✈️</button>
           </div>
         </div>
       </div>
@@ -71,7 +72,7 @@ document.addEventListener("DOMContentLoaded", () => {
       </div>
     `);
 
-    // 2. Three.js Scene Setup
+    // Three.js Scene Setup
     const viewport = document.getElementById("game-viewport");
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x6b8e4e);
@@ -144,6 +145,67 @@ document.addEventListener("DOMContentLoaded", () => {
     player.position.set(0, 0.3, 0);
     scene.add(player);
 
+    const otherPlayers = {};
+
+    // Socket.IO Events
+    if (socket) {
+      socket.emit("joinWorld", { gender, x: player.position.x, z: player.position.z });
+
+      socket.on("onlineCount", (cnt) => {
+        const el = document.getElementById("online-count");
+        if (el) el.innerText = cnt;
+      });
+
+      socket.on("currentPlayers", (pList) => {
+        Object.keys(pList).forEach((id) => {
+          if (id !== socket.id && !otherPlayers[id]) {
+            const pData = pList[id];
+            const pMesh = makeHuman(pData.gender, pData.gender === "male" ? 0x2980b9 : 0xe74c3c);
+            pMesh.position.set(pData.x, 0.3, pData.z);
+            scene.add(pMesh);
+            otherPlayers[id] = pMesh;
+          }
+        });
+      });
+
+      socket.on("newPlayer", (pData) => {
+        if (!otherPlayers[pData.id]) {
+          const pMesh = makeHuman(pData.gender, pData.gender === "male" ? 0x2980b9 : 0xe74c3c);
+          pMesh.position.set(pData.x, 0.3, pData.z);
+          scene.add(pMesh);
+          otherPlayers[pData.id] = pMesh;
+        }
+      });
+
+      socket.on("playerMoved", (pData) => {
+        if (otherPlayers[pData.id]) {
+          otherPlayers[pData.id].position.x = pData.x;
+          otherPlayers[pData.id].position.z = pData.z;
+          otherPlayers[pData.id].rotation.y = pData.rotation;
+          animLimbs(otherPlayers[pData.id], true, 1.0);
+        }
+      });
+
+      socket.on("playerDisconnected", (id) => {
+        if (otherPlayers[id]) {
+          scene.remove(otherPlayers[id]);
+          delete otherPlayers[id];
+        }
+      });
+
+      socket.on("chatMessage", (data) => {
+        const status = document.getElementById("chat-status");
+        if (status) {
+          status.innerText = `💬 Chat: "${data.text}"`;
+          status.style.color = "#27ae60";
+          setTimeout(() => {
+            status.innerText = "Pool Lounge Safehouse";
+            status.style.color = "#777";
+          }, 4000);
+        }
+      });
+    }
+
     const zombies = [];
     for (let i = 0; i < 5; i++) {
       const z = makeHuman("male", 0x27ae60);
@@ -152,7 +214,6 @@ document.addEventListener("DOMContentLoaded", () => {
       zombies.push({ mesh: z, hp: 100 });
     }
 
-    // Laser Sight
     const laserMat = new THREE.LineDashedMaterial({ color: 0xe74c3c, dashSize: 0.4, gapSize: 0.2 });
     const laser = new THREE.Line(new THREE.BufferGeometry(), laserMat);
     scene.add(laser);
@@ -180,6 +241,14 @@ document.addEventListener("DOMContentLoaded", () => {
     joyZone.ontouchstart = (e) => { joyActive = true; handleTouch(e); };
     joyZone.ontouchmove = handleTouch;
     joyZone.ontouchend = () => { joyActive = false; stick.style.transform = "translate(0,0)"; vec = { x: 0, y: 0 }; };
+
+    document.getElementById("btn-send").onclick = () => {
+      const input = document.getElementById("chat-in");
+      if (input && input.value.trim() && socket) {
+        socket.emit("sendChat", input.value.trim());
+        input.value = "";
+      }
+    };
 
     document.getElementById("btn-sprint").onclick = () => {
       state.sprint = !state.sprint;
@@ -243,6 +312,10 @@ document.addEventListener("DOMContentLoaded", () => {
         camera.position.x = player.position.x + 16;
         camera.position.z = player.position.z + 16;
         camera.lookAt(player.position.x, player.position.y, player.position.z);
+
+        if (socket) {
+          socket.emit("playerMove", { x: player.position.x, z: player.position.z, rotation: player.rotation.y });
+        }
       }
 
       animLimbs(player, isMoving, state.sprint ? 1.8 : 1.0);
@@ -286,3 +359,4 @@ document.addEventListener("DOMContentLoaded", () => {
     animate();
   }
 });
+  
