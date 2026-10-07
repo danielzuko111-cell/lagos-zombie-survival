@@ -5,47 +5,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Lagos Zombie Survival 3D</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+    <script>
+        window.onerror = function(msg, url, line) {
+            alert("Game Alert: " + msg + " (Line " + line + ")");
+        };
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
-    <!-- Red Damage Flash Overlay -->
     <div id="damage-flash"></div>
 
     <!-- Survivor Registration Screen -->
     <div id="char-select-screen" class="overlay-screen">
         <div class="card-modal">
             <h2>SURVIVOR REGISTRATION</h2>
-            <p>Choose your gender to enter Eko Safehouse Lounge</p>
+            <p>Choose gender to enter Eko Safehouse Lounge</p>
 
             <div class="gender-selection">
-                <button id="btn-male" class="gender-btn active" type="button">
+                <button id="btn-male" class="gender-btn active" type="button" onclick="selectGender('male')">
                     <span class="gender-icon">👨</span>
                     <span>Male</span>
                 </button>
-                <button id="btn-female" class="gender-btn" type="button">
+                <button id="btn-female" class="gender-btn" type="button" onclick="selectGender('female')">
                     <span class="gender-icon">👩</span>
                     <span>Female</span>
                 </button>
             </div>
 
-            <button id="btn-start-game" class="primary-btn" type="button">ENTER GAME WORLD</button>
+            <button id="btn-start-game" class="primary-btn" type="button" onclick="startGame()">ENTER GAME WORLD</button>
         </div>
     </div>
 
     <!-- Popup Chat Modal -->
-    <div id="chat-modal" class="overlay-screen" style="display: none;">
-        <div class="card-modal" style="max-width: 340px;">
-            <h3 style="margin-bottom: 12px; font-size: 16px;">💬 BROADCAST CHAT</h3>
-            <input id="chat-input-field" type="text" placeholder="Type message for players..." style="width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #ccc; font-size: 14px; margin-bottom: 14px; outline: none;">
-            <div style="display: flex; gap: 10px;">
-                <button id="btn-close-chat" type="button" style="flex: 1; padding: 12px; border-radius: 12px; border: 1px solid #ccc; background: #f0f0f0; font-weight: 600; cursor: pointer;">Cancel</button>
-                <button id="btn-send-chat-modal" class="primary-btn" type="button" style="flex: 1; padding: 12px;">Send ✈️</button>
+    <div id="chat-modal" class="overlay-screen" style="display:none;">
+        <div class="card-modal" style="max-width:320px;">
+            <h3 style="margin-bottom:12px; font-size:16px;">💬 BROADCAST CHAT</h3>
+            <input id="chat-input-field" type="text" placeholder="Type message..." style="width:100%;padding:10px;border-radius:10px;border:1px solid #ccc;font-size:14px;margin-bottom:12px;outline:none;">
+            <div style="display:flex;gap:10px;">
+                <button type="button" onclick="closeChat()" style="flex:1;padding:10px;border-radius:10px;border:1px solid #ccc;background:#f0f0f0;font-weight:600;cursor:pointer;">Cancel</button>
+                <button type="button" class="primary-btn" onclick="sendChatMsg()" style="flex:1;padding:10px;">Send ✈️</button>
             </div>
         </div>
     </div>
 
-    <!-- 3D Viewport -->
     <div id="game-viewport"></div>
 
     <script src="game.js"></script>
