@@ -1,127 +1,279 @@
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    user-select: none;
-    -webkit-user-select: none;
-}
+// Lagos Zombie Survival 3D - Isometric Engine & UI Overlay
+document.addEventListener("DOMContentLoaded", () => {
+    let selectedGender = "male";
+    let gameStarted = false;
 
-body, html {
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    background-color: #7b9e61; /* Outdoor ground tint background */
-}
+    // Character Selection Listeners
+    const btnMale = document.getElementById("btn-male");
+    const btnFemale = document.getElementById("btn-female");
+    const btnStart = document.getElementById("btn-start-game");
+    const selectScreen = document.getElementById("char-select-screen");
 
-/* 3D Canvas Container */
-#game-viewport {
-    width: 100vw;
-    height: 100vh;
-    position: absolute;
-    top: 0;
-    left: 0;
-    z-index: 1;
-}
+    btnMale.addEventListener("click", () => {
+        selectedGender = "male";
+        btnMale.classList.add("active");
+        btnFemale.classList.remove("active");
+    });
 
-/* Overlay Screen Baseline */
-.overlay-screen {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(15, 15, 18, 0.85);
-    backdrop-filter: blur(8px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-    padding: 20px;
-}
+    btnFemale.addEventListener("click", () => {
+        selectedGender = "female";
+        btnFemale.classList.add("active");
+        btnMale.classList.remove("active");
+    });
 
-/* Rounded Modal Card */
-.card-modal {
-    background: #ffffff;
-    color: #1a1a1a;
-    width: 100%;
-    max-width: 380px;
-    padding: 28px 24px;
-    border-radius: 24px;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
-    text-align: center;
-}
+    btnStart.addEventListener("click", () => {
+        selectScreen.style.display = "none";
+        init3DWorld();
+        gameStarted = true;
+    });
 
-.card-modal h2 {
-    font-size: 20px;
-    font-weight: 800;
-    letter-spacing: -0.5px;
-    color: #111;
-    margin-bottom: 6px;
-}
+    function init3DWorld() {
+        const viewport = document.getElementById("game-viewport");
 
-.card-modal p {
-    font-size: 13px;
-    color: #666;
-    margin-bottom: 24px;
-}
+        // 1. Inject Modern HUD Overlays (Matching 3D Social UI)
+        const hudHTML = `
+            <!-- Top Status Bar -->
+            <div style="position: fixed; top: 12px; left: 50%; transform: translateX(-50%); width: 92%; max-width: 440px; display: flex; flex-direction: column; gap: 8px; z-index: 10; pointer-events: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.92); backdrop-filter: blur(10px); padding: 8px 16px; border-radius: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); pointer-events: auto;">
+                    <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13px; color: #333;">
+                        <span>☀️ 10:08 AM</span>
+                        <span style="color: #aaa;">|</span>
+                        <span>🔊</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 6px; background: #27ae60; color: white; padding: 6px 14px; border-radius: 20px; font-weight: 800; font-size: 14px;">
+                        <span>₦</span><span id="hud-cash">2,189,100</span>
+                        <span style="background: rgba(255,255,255,0.3); width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-left: 4px; font-size: 12px;">+</span>
+                    </div>
+                </div>
 
-/* Gender Picker */
-.gender-selection {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 24px;
-}
+                <div style="display: flex; gap: 8px; justify-content: center;">
+                    <span style="background: rgba(255,255,255,0.85); padding: 4px 12px; border-radius: 14px; font-size: 11px; font-weight: 600; color: #555;">👀 18.9m visits</span>
+                    <span style="background: rgba(255,255,255,0.85); padding: 4px 12px; border-radius: 14px; font-size: 11px; font-weight: 700; color: #27ae60;">● 85k online</span>
+                </div>
+            </div>
 
-.gender-btn {
-    flex: 1;
-    padding: 16px 12px;
-    border-radius: 16px;
-    border: 2px solid #eaeaea;
-    background: #f8f9fa;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
+            <!-- Bottom Chat & Location Card -->
+            <div style="position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); width: 92%; max-width: 440px; z-index: 10; display: flex; flex-direction: column; gap: 10px; pointer-events: auto;">
+                <div style="background: #ffffff; padding: 14px 18px; border-radius: 22px; box-shadow: 0 8px 24px rgba(0,0,0,0.18);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 38px; height: 38px; background: #eafaf1; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+                                ${selectedGender === "male" ? "👨" : "👩"}
+                            </div>
+                            <div>
+                                <h4 style="font-size: 14px; font-weight: 800; color: #111;">Eko Safehouse Lounge</h4>
+                                <p style="font-size: 11px; color: #777;">Zone: Safe Sanctuary</p>
+                            </div>
+                        </div>
+                        <span style="font-size: 12px; background: #f0f0f0; padding: 6px 12px; border-radius: 12px; font-weight: 600;">💬 Chat</span>
+                    </div>
 
-.gender-btn .gender-icon {
-    font-size: 32px;
-}
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="text" placeholder="Say something to players here..." style="flex: 1; padding: 12px 16px; border-radius: 16px; border: 1px solid #eaeaea; background: #f8f9fa; font-size: 13px; outline: none;">
+                        <button style="width: 42px; height: 42px; background: #27ae60; color: white; border: none; border-radius: 50%; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;">✈️</button>
+                    </div>
+                </div>
+            </div>
 
-.gender-btn span {
-    font-size: 14px;
-    font-weight: 600;
-    color: #444;
-}
+            <!-- Mobile Touch Joystick -->
+            <div id="joystick-zone" style="position: fixed; bottom: 130px; left: 24px; width: 95px; height: 95px; background: rgba(255,255,255,0.25); backdrop-filter: blur(4px); border: 2px solid rgba(255,255,255,0.6); border-radius: 50%; z-index: 10; touch-action: none;">
+                <div id="stick" style="width: 38px; height: 38px; background: #27ae60; border-radius: 50%; position: absolute; top: 27px; left: 27px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); pointer-events: none;"></div>
+            </div>
+        `;
+        viewport.insertAdjacentHTML("afterend", hudHTML);
 
-.gender-btn.active {
-    border-color: #27ae60;
-    background: #eafaf1;
-}
+        // 2. Three.js Scene & Angled Isometric Camera Setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x7b9e61); // Outdoor grass green
 
-.gender-btn.active span {
-    color: #27ae60;
-}
+        const aspect = window.innerWidth / window.innerHeight;
+        const d = 14;
+        const camera = new THREE.OrthographicCamera(-d * aspect, d * aspect, d, -d, 1, 1000);
 
-/* Primary Action Button */
-.primary-btn {
-    width: 100%;
-    padding: 16px;
-    border: none;
-    border-radius: 16px;
-    background: #27ae60;
-    color: #ffffff;
-    font-size: 15px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-    cursor: pointer;
-    box-shadow: 0 6px 16px rgba(39, 174, 96, 0.35);
-    transition: transform 0.1s ease;
-}
+        // Angled Isometric View Position
+        camera.position.set(20, 20, 20);
+        camera.lookAt(0, 0, 0);
 
-.primary-btn:active {
-    transform: scale(0.98);
-}
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        viewport.appendChild(renderer.domElement);
+
+        // 3. Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+        dirLight.position.set(20, 40, 20);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        // 4. Build 3D Safehouse Room & Floor (Matching Screenshot Lounge)
+        // Green Grass Ground
+        const grassGeo = new THREE.PlaneGeometry(80, 80);
+        const grassMat = new THREE.MeshLambertMaterial({ color: 0x7b9e61 });
+        const grass = new THREE.Mesh(grassGeo, grassMat);
+        grass.rotation.x = -Math.PI / 2;
+        grass.position.y = -0.01;
+        scene.add(grass);
+
+        // Safehouse Platform Floor
+        const floorGeo = new THREE.BoxGeometry(16, 0.4, 14);
+        const floorMat = new THREE.MeshLambertMaterial({ color: 0xe0d6c3 }); // Warm hotel floor
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.position.set(0, 0, 0);
+        scene.add(floor);
+
+        // Safehouse Swimming Pool
+        const poolGeo = new THREE.BoxGeometry(5, 0.3, 3);
+        const poolMat = new THREE.MeshLambertMaterial({ color: 0x3498db });
+        const pool = new THREE.Mesh(poolGeo, poolMat);
+        pool.position.set(4, 0.1, -3);
+        scene.add(pool);
+
+        // 5. Create 3D Human Avatar (Male / Female)
+        function createAvatar(gender, color) {
+            const group = new THREE.Group();
+
+            // Head
+            const headGeo = new THREE.SphereGeometry(0.35, 16, 16);
+            const headMat = new THREE.MeshLambertMaterial({ color: 0x8d5524 }); // Skin tone
+            const head = new THREE.Mesh(headGeo, headMat);
+            head.position.y = 1.6;
+            group.add(head);
+
+            // Hair (Longer for female, shorter for male)
+            const hairGeo = gender === "female" ? new THREE.BoxGeometry(0.7, 0.5, 0.7) : new THREE.BoxGeometry(0.6, 0.2, 0.6);
+            const hairMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+            const hair = new THREE.Mesh(hairGeo, hairMat);
+            hair.position.y = gender === "female" ? 1.7 : 1.85;
+            group.add(hair);
+
+            // Body / Torso
+            const bodyGeo = new THREE.BoxGeometry(0.6, 0.8, 0.4);
+            const bodyMat = new THREE.MeshLambertMaterial({ color: color });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 1.0;
+            group.add(body);
+
+            // Legs
+            const legGeo = new THREE.BoxGeometry(0.22, 0.6, 0.22);
+            const legMat = new THREE.MeshLambertMaterial({ color: 0x2c3e50 });
+            
+            const legL = new THREE.Mesh(legGeo, legMat);
+            legL.position.set(-0.15, 0.3, 0);
+            group.add(legL);
+
+            const legR = new THREE.Mesh(legGeo, legMat);
+            legR.position.set(0.15, 0.3, 0);
+            group.add(legR);
+
+            return group;
+        }
+
+        // Main Player Avatar
+        const playerColor = selectedGender === "male" ? 0xe67e22 : 0x9b59b6;
+        const player3D = createAvatar(selectedGender, playerColor);
+        player3D.position.set(0, 0.2, 0);
+        scene.add(player3D);
+
+        // NPC Players in Lounge
+        const npc1 = createAvatar("female", 0xe74c3c);
+        npc1.position.set(-3, 0.2, 2);
+        scene.add(npc1);
+
+        const npc2 = createAvatar("male", 0x2980b9);
+        npc2.position.set(2, 0.2, 3);
+        scene.add(npc2);
+
+        // 3D Zombies roaming outside grass
+        const zombies3D = [];
+        for (let i = 0; i < 5; i++) {
+            const z = createAvatar("male", 0x27ae60); // Green zombie clothing/skin
+            z.position.set((Math.random() - 0.5) * 35, 0.2, -12 - Math.random() * 15);
+            scene.add(z);
+            zombies3D.push(z);
+        }
+
+        // 6. Mobile Joystick Controls Logic
+        const joyZone = document.getElementById("joystick-zone");
+        const stick = document.getElementById("stick");
+        let joyActive = false;
+        let joyVector = { x: 0, y: 0 };
+
+        function handleTouch(e) {
+            if (!joyActive) return;
+            const rect = joyZone.getBoundingClientRect();
+            const touch = e.touches[0];
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            let dx = touch.clientX - centerX;
+            let dy = touch.clientY - centerY;
+            const dist = Math.hypot(dx, dy);
+            const maxDist = 30;
+
+            if (dist > maxDist) {
+                dx = (dx / dist) * maxDist;
+                dy = (dy / dist) * maxDist;
+            }
+
+            stick.style.transform = `translate(${dx}px, ${dy}px)`;
+            joyVector = { x: dx / maxDist, y: dy / maxDist };
+        }
+
+        joyZone.addEventListener("touchstart", (e) => { joyActive = true; handleTouch(e); });
+        joyZone.addEventListener("touchmove", handleTouch);
+        joyZone.addEventListener("touchend", () => {
+            joyActive = false;
+            stick.style.transform = "translate(0px, 0px)";
+            joyVector = { x: 0, y: 0 };
+        });
+
+        // Window Resize Handler
+        window.addEventListener("resize", () => {
+            const aspect = window.innerWidth / window.innerHeight;
+            camera.left = -d * aspect;
+            camera.right = d * aspect;
+            camera.top = d;
+            camera.bottom = -d;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // 7. Main Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Move Player in Isometric Space
+            if (joyVector.x !== 0 || joyVector.y !== 0) {
+                const speed = 0.12;
+                // Isometric conversion
+                const isoX = (joyVector.x - joyVector.y) * speed;
+                const isoZ = (joyVector.x + joyVector.y) * speed;
+
+                player3D.position.x += isoX;
+                player3D.position.z += isoZ;
+
+                // Rotate character facing direction
+                const angle = Math.atan2(isoX, isoZ);
+                player3D.rotation.y = angle;
+
+                // Keep camera locked onto player
+                camera.position.x = player3D.position.x + 20;
+                camera.position.z = player3D.position.z + 20;
+                camera.lookAt(player3D.position.x, player3D.position.y, player3D.position.z);
+            }
+
+            // Slowly animate zombies moving toward safehouse
+            zombies3D.forEach((z) => {
+                z.position.z += 0.02;
+                if (z.position.z > -2) z.position.z = -25;
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+    }
+});
+        
