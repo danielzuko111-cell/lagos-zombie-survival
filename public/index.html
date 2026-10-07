@@ -2,16 +2,36 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lagos Zombie Survival</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Lagos Zombie Survival 3D</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Three.js 3D Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
-    <h1>Lagos Zombie Survival</h1>
-    
-    <div id="game-container">
-        <p>Loading Game World...</p>
+    <!-- Character Selection Overlay -->
+    <div id="char-select-screen" class="overlay-screen">
+        <div class="card-modal">
+            <h2>SURVIVOR REGISTRATION</h2>
+            <p>Choose your gender to enter Lagos Safehouse</p>
+
+            <div class="gender-selection">
+                <button id="btn-male" class="gender-btn active">
+                    <span class="gender-icon">👨</span>
+                    <span>Male</span>
+                </button>
+                <button id="btn-female" class="gender-btn">
+                    <span class="gender-icon">👩</span>
+                    <span>Female</span>
+                </button>
+            </div>
+
+            <button id="btn-start-game" class="primary-btn">ENTER GAME WORLD</button>
+        </div>
     </div>
+
+    <!-- 3D Game Viewport -->
+    <div id="game-viewport"></div>
 
     <script src="game.js"></script>
 </body>
